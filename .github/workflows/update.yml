@@ -1,52 +1,36 @@
-name: 🔄 Refresh News Feed
+name: Refresh news feed
 
 on:
   schedule:
-    # Every 4 hours at minute 0
-    - cron: "0 */4 * * *"
-  workflow_dispatch:   # allow manual trigger from GitHub UI
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
   push:
-    branches: [main]   # also run on new deployments
+    branches: [main]
 
 permissions:
-  contents: write      # needed to commit data.json back to the repo
+  contents: write
 
 jobs:
   aggregate:
-    name: Aggregate RSS Feeds → data.json
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Set up Python ───────────────────────────────────────────
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          enable-cache: true
 
-      # ── 3. Install dependencies ────────────────────────────────────
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install feedparser requests
+      - run: uv pip install --system feedparser requests
 
-      # ── 4. Run aggregator ──────────────────────────────────────────
-      - name: Run feed aggregator
-        run: python script.py
+      - run: python script.py
 
-      # ── 5. Commit data.json if changed ────────────────────────────
-      - name: Commit & push data.json
-        run: |
+      - run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          # Only commit if there's something to commit
           git diff --cached --quiet || git commit -m "chore: refresh news feed [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push
